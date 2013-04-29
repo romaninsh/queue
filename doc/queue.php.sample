@@ -1,0 +1,19 @@
+<?php
+include 'vendor/autoload.php';
+#include 'vendor/atk4/atk4/loader.php';
+
+$api=new ApiCLI();
+$api->add('Logger');
+$api->dbConnect();
+
+$processor = $api->add('romaninsh/queue/Controller_QueueProcessor');
+
+echo "Starting.. \n";
+try {
+    $processor->process(5);
+} catch(Exception $e){
+    $api->caughtException($e);
+}
+echo "Done..\n";
+
+
