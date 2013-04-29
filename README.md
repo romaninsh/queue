@@ -6,7 +6,7 @@ This is an implementation of a simple queuing mechanism based on MySQL table. Th
 
 ## Installing
 
-You can install either from git or through composer. [https://packagist.org/packages/atk4/queue](https://packagist.org/packages/atk4/queue). Refer to add-on installation documentation for Agile Toolkit.
+You can install either from git or through composer. [https://packagist.org/packages/romaninsh/queue](https://packagist.org/packages/romaninsh/queue). Refer to add-on installation documentation for Agile Toolkit.
 
 ## Usage
 
