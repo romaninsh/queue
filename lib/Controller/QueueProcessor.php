@@ -165,11 +165,13 @@ class Controller_QueueProcessor extends \AbstractController {
                 // Update queue
                 $this->queue['outcome']=json_encode($res);
                 $this->queue['status']='completed';
-                echo "OK\n";
+                if(!$this->api instanceof \ApiWeb)
+                    echo "OK\n";
             }catch(\Exception $e){
                 $this->queue['error']=$e->getMessage();
                 $this->queue['status']='failed';
-                echo "FAIL\n";
+                if(!$this->api instanceof \ApiWeb)
+                    echo "FAIL\n";
             }
 
             $this->queue->save();
