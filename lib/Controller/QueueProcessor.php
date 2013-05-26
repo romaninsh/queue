@@ -66,6 +66,40 @@ class Controller_QueueProcessor extends \AbstractController {
             throw $e;       // finally
         }
     }
+
+    /**
+     * Only the currently loaded record will be processed by scheduler.
+     *
+     * $processor->scheduleOne($books, 'sendEmail'); // will delete all books
+     *
+     * @return Queue model (so that you can track it by ID)
+     */
+    function scheduleOne(\Model $model, $method='process'){
+
+        if(!$model->loaded())throw $this->exception('Model must be loaded');
+
+        if($model instanceof \Model_Table){
+            $model->setActualFields(array('id',$this->model->title_field));
+        }
+        $class=get_class($model);
+        $caption=$model->caption?:$class;
+
+
+        $q=$this->queue;
+
+
+        $id=$model->id;
+        $q->set('model_id',$id);
+        $q->set('model_class',$class);
+        $q->set('model_method',$method);
+
+        $q->set('name',$method.' '.' ('.$caption.') #'.$id);
+        $q->set('status','scheduled'); // skip draft
+        $q->saveAndUnload();
+
+    }
+
+
     /**
      * Process will load a batch of records from the queue, will initialize
      * appropriate models and will execute action on those models.
@@ -87,11 +121,20 @@ class Controller_QueueProcessor extends \AbstractController {
 
         if(!$batch_ids)return;
 
-        $m->addCondition('id',$batch_ids)->dsql()
-            ->set('processor_id',$this->processor_id)
-            ->set('status','batch')
-            ->update()
-            ;
+        if ($m instanceof Model_Table) {
+            $m->addCondition('id',$batch_ids)->dsql()
+                ->set('processor_id',$this->processor_id)
+                ->set('status','batch')
+                ->update()
+                ;
+        }else{
+            foreach($batch_ids as $id){
+                $m->load($id);
+                $m['processor_id']=$this->processor_id;
+                $m['status']='batch';
+                $m->save();
+            }
+        }
         $m->unlock();
 
 
@@ -99,7 +142,8 @@ class Controller_QueueProcessor extends \AbstractController {
 
         foreach($batch as $rec){
 
-            echo "Processing ".$rec['name'].".. ";
+            if(!$this->api instanceof \ApiWeb)
+                echo "Processing ".$rec['name'].".. ";
 
             // cache model objects and re-use them
             if(isset($models[$rec['model_class']])){
@@ -109,7 +153,7 @@ class Controller_QueueProcessor extends \AbstractController {
                     $this->add($rec['model_class']);
             }
 
-            $this->queue->load($rec['id']);
+            $this->queue->load($rec[$this->queue->id_field]);
             $this->queue['status']='processing';
             $this->queue->save();
 
@@ -128,17 +172,30 @@ class Controller_QueueProcessor extends \AbstractController {
                 echo "FAIL\n";
             }
 
-            $this->queue->update();
+            $this->queue->save();
 
         }
 
         $m=$this->queue->newInstance();
-        $m
-            ->addCondition('status','completed')
-            ->addCondition('processor_id',$this->processor_id)->dsql()
-            ->set('status','finished')
-            ->update()
-            ;
 
+        if ($m instanceof Model_Table) {
+
+            $m
+                ->addCondition('status','completed')
+                ->addCondition('processor_id',$this->processor_id)->dsql()
+                ->set('status','finished')
+                ->update()
+                ;
+        }else{
+
+            $m
+                ->addCondition('status','completed')
+                ->addCondition('processor_id',$this->processor_id);
+
+            foreach($m as $rec){
+                $m['status']='finished';
+                $m->save();
+            }
+        }
     }
 }

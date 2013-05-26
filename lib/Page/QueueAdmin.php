@@ -3,12 +3,15 @@ namespace romaninsh\queue;
 
 class Page_QueueAdmin extends \Page {
     public $queue_class='romaninsh/queue/Model_Queue';
+    public $processor;
     function init(){
         parent::init();
 
 
         // Initialize processor
-        $this->processor=$this->add('romaninsh/queue/Controller_QueueProcessor');
+        if(!$this->processor){
+            $this->processor=$this->add('romaninsh/queue/Controller_QueueProcessor');
+        }
 
         // Manually process a record. It might be time consuming and your UI
         // will be waiting for a moment....
@@ -38,8 +41,11 @@ class Page_QueueAdmin extends \Page {
         ));
 
         if($button->isClicked()){
+            $this->processor->process(1);
+            /*
             $this->add('romaninsh/queue/Model_SampleModel')
                 ->tryLoadAny()->process();
+             */
 
             $this->js(null, $dialog->js()->dialog('close'))
                 ->univ()->successMessage('Successfully processed')
