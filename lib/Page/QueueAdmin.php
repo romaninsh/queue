@@ -40,6 +40,8 @@ class Page_QueueAdmin extends \Page {
              */
         ));
 
+        $u=$this->api->url();
+
         if($button->isClicked()){
             $this->processor->process(1);
             /*
@@ -50,6 +52,16 @@ class Page_QueueAdmin extends \Page {
             $this->js(null, $dialog->js()->dialog('close'))
                 ->univ()->successMessage('Successfully processed')
                 ->execute();
+        }
+
+
+        if($bs->add('Button')->set('Cl: finished')->isClicked()){
+            $this->processor->queue->addCondition('status','finished')->deleteAll();
+            $this->js()->univ()->location($u)->execute();
+        }
+        if($bs->add('Button')->set('Cl: failed')->isClicked()){
+            $this->processor->queue->addCondition('status','failed')->deleteAll();
+            $this->js()->univ()->location($u)->execute();
         }
 
 
@@ -132,12 +144,57 @@ class Page_QueueAdmin extends \Page {
 
 
         $c->add('H3')->set('Pending Jobs');
-        $c->add('Grid')->setModel($this->add($this->queue_class)->addCondition('status','scheduled'),array('id','model_id','name','status','ts'))->setOrder('ts');
+        $g=$c->add('Grid');
+        $g->setModel($this->add($this->queue_class)
+            ->addCondition('status','scheduled'),array('name','status','ts'))
+            ->setOrder('ts')
+            ->setLimit(100);
+        $g->add('VirtualPage')
+            ->addColumn('details')
+            ->set(function($p)use($g){
+                $p->add('View_ModelDetails')
+                    ->setModel($g->model)
+                    ->load($p->id);
+            });
+
+        $c->add('H3')->set('Stale Jobs');
+        $c->add('Grid')
+            ->setModel($this->add($this->queue_class)
+            ->addCondition('status','processing'),array('name','status','ts'))
+            ->setOrder('ts',true)
+            ->setLimit(100);
 
         $c=$cc->addColumn(6);
 
         $c->add('H3')->set('Recently Completed');
-        $c->add('Grid')->setModel($this->add($this->queue_class)->addCondition('status','finished'),array('id','model_id','name','status','ts'))->setOrder('ts desc');
+        $g=$c->add('Grid');
+        $g->setModel($this->add($this->queue_class)
+            ->addCondition('status','finished'),array('name','status','ts'))
+            ->setOrder('ts',true)
+            ->setLimit(100);
+
+        $c->add('H3')->set('Recently Failed');
+        $g=$c->add('Grid');
+        $g->setModel($this->add($this->queue_class)
+            ->addCondition('status','failed'),array('name','status','ts'))
+            ->setOrder('ts desc')
+            ->setLimit(100);
+        $g->addColumn('button','restart');
+        $g->add('VirtualPage')
+            ->addColumn('details')
+            ->set(function($p)use($g){
+                $p->add('View_ModelDetails')
+                    ->setModel($g->model)
+                    ->load($p->id);
+            });
+
+        if($_GET['restart']){
+            $this->add($this->queue_class)
+                ->load($_GET['restart'])
+                ->set('status','scheduled')
+                ->save();
+            $this->js()->univ()->page($this->api->url())->execute();
+        }
 
     }
 }

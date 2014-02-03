@@ -104,7 +104,7 @@ class Controller_QueueProcessor extends \AbstractController {
      * Process will load a batch of records from the queue, will initialize
      * appropriate models and will execute action on those models.
      */
-    function process($batch_length=null){
+    function process($batch_length=null,$verbose=false){
 
         $m=$this->queue->newInstance();
         $m->addCondition('status','scheduled');
@@ -142,8 +142,7 @@ class Controller_QueueProcessor extends \AbstractController {
 
         foreach($batch as $rec){
 
-            if(!$this->api instanceof \ApiWeb)
-                echo "Processing ".$rec['name'].".. ";
+            if($verbose) echo "Processing ".$rec[$m->id_field]." ".$rec['name'].".. ";
 
             // cache model objects and re-use them
             if(isset($models[$rec['model_class']])){
@@ -160,18 +159,33 @@ class Controller_QueueProcessor extends \AbstractController {
             try{
                 $mm->unload();
                 $mm->load($rec['model_id']);
-                $res=$mm->{$rec['model_method']}();
+                $res=$mm->{$rec['model_method']}($mm);
 
                 // Update queue
                 $this->queue['outcome']=json_encode($res);
                 $this->queue['status']='completed';
-                if(!$this->api instanceof \ApiWeb)
-                    echo "OK\n";
+                if($verbose) echo "OK\n";
             }catch(\Exception $e){
                 $this->queue['error']=$e->getMessage();
+
+                if($e instanceof BaseException) {
+                    $this->queue['error']=
+                    $e->getMessage()."\n".$e->getAdditionalMessage()."\nAdditional Info: \n".
+
+                    $this->api->logger->print_r(
+                        $e->more_info,'','','* ',"\n",' ');
+                }
+
+                $e->addMoreInfo('queue_id',$this->queue->id);
+                $e->addMoreInfo('queue_name',$this->queue['name']);
+
+
+                $this->api->logger->logCaughtException($e);
+
                 $this->queue['status']='failed';
-                if(!$this->api instanceof \ApiWeb)
+                if($verbose){
                     echo "FAIL\n";
+                }
             }
 
             $this->queue->save();
