@@ -26,7 +26,7 @@ class Controller_QueueProcessor extends \AbstractController {
      */
     function schedule(\Model $model, $method='process'){
 
-        if($model instanceof \Model_Table){
+        if($model instanceof \SQL_Model){
             $model->setActualFields(array('id',$this->model->title_field));
         }
         $class=get_class($model);
@@ -78,8 +78,8 @@ class Controller_QueueProcessor extends \AbstractController {
 
         if(!$model->loaded())throw $this->exception('Model must be loaded');
 
-        if($model instanceof \Model_Table){
-            $model->setActualFields(array('id',$this->model->title_field));
+        if($model instanceof \SQL_Model){
+            $model->setActualFields(array('id',$model->title_field));
         }
         $class=get_class($model);
         $caption=$model->caption?:$class;
@@ -115,13 +115,13 @@ class Controller_QueueProcessor extends \AbstractController {
 
         $m->lock();
         foreach($m as $id=>$rec){
-            $batch[]=$rec;
+            $batch[]=$rec->get();
             $batch_ids[]=$id;
         }
 
         if(!$batch_ids)return;
 
-        if ($m instanceof Model_Table) {
+        if ($m instanceof \SQL_Model) {
             $m->addCondition('id',$batch_ids)->dsql()
                 ->set('processor_id',$this->processor_id)
                 ->set('status','batch')
@@ -132,7 +132,7 @@ class Controller_QueueProcessor extends \AbstractController {
                 $m->load($id);
                 $m['processor_id']=$this->processor_id;
                 $m['status']='batch';
-                $m->save();
+                $m->saveAndUnload();
             }
         }
         $m->unlock();
@@ -168,12 +168,8 @@ class Controller_QueueProcessor extends \AbstractController {
             }catch(\Exception $e){
                 $this->queue['error']=$e->getMessage();
 
-                if($e instanceof BaseException) {
-                    $this->queue['error']=
-                    $e->getMessage()."\n".$e->getAdditionalMessage()."\nAdditional Info: \n".
-
-                    $this->api->logger->print_r(
-                        $e->more_info,'','','* ',"\n",' ');
+                if($e instanceof \BaseException) {
+                    $this->queue['error']=$e->getText();
                 }
 
                 $e->addMoreInfo('queue_id',$this->queue->id);
@@ -194,7 +190,7 @@ class Controller_QueueProcessor extends \AbstractController {
 
         $m=$this->queue->newInstance();
 
-        if ($m instanceof Model_Table) {
+        if ($m instanceof \SQL_Model) {
 
             $m
                 ->addCondition('status','completed')

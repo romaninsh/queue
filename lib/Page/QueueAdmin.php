@@ -153,7 +153,7 @@ class Page_QueueAdmin extends \Page {
             ->addColumn('details')
             ->set(function($p)use($g){
                 $p->add('View_ModelDetails')
-                    ->setModel($g->model)
+                    ->setModel($this->queue_class)
                     ->load($p->id);
             });
 
@@ -172,6 +172,13 @@ class Page_QueueAdmin extends \Page {
             ->addCondition('status','finished'),array('name','status','ts'))
             ->setOrder('ts',true)
             ->setLimit(100);
+        $g->add('VirtualPage')
+            ->addColumn('details')
+            ->set(function($p)use($g){
+                $p->add('View_ModelDetails')
+                    ->setModel($this->queue_class)
+                    ->load($p->id);
+            });
 
         $c->add('H3')->set('Recently Failed');
         $g=$c->add('Grid');
@@ -184,7 +191,7 @@ class Page_QueueAdmin extends \Page {
             ->addColumn('details')
             ->set(function($p)use($g){
                 $p->add('View_ModelDetails')
-                    ->setModel($g->model)
+                    ->setModel($this->queue_class)
                     ->load($p->id);
             });
 
