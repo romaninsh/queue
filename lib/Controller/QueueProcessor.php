@@ -27,7 +27,7 @@ class Controller_QueueProcessor extends \AbstractController {
     function schedule(\Model $model, $method='process'){
 
         if($model instanceof \SQL_Model){
-            $model->setActualFields(array('id',$this->model->title_field));
+            //$model->setActualFields(array('id',$this->model->title_field));
         }
         $class=get_class($model);
         $caption=$model->caption?:$class;
@@ -36,7 +36,7 @@ class Controller_QueueProcessor extends \AbstractController {
         $q=$this->queue;
 
 
-        $q->lock();
+        //$q->lock();
         try {
             // TODO: this could be more efficient, but I went for simplicity
             foreach($model as $id=>$row){
@@ -55,13 +55,13 @@ class Controller_QueueProcessor extends \AbstractController {
                 ->dsql()->set('status','scheduled')
                 ->update();
 
-            $q->unlock();   // finally
+            //$q->unlock();   // finally
 
         }catch(\Exception $e){
             // Remove everything we have scheduled so far and re-throw error
             $q->addCondition('status','scheduled')
                 ->dsql()->delete();
-            $q->unlock();
+            //$q->unlock();
 
             throw $e;       // finally
         }
